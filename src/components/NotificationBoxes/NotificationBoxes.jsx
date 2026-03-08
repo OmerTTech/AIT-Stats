@@ -34,7 +34,7 @@ const NotificationBoxes = ({ isPageDashboard, onNotificationCount }) => {
         const response = await API.notification.allNotifications();
         const notificationDatas = response.data;
         const sortedNotifications = notificationDatas.sort(
-          (a, b) => b.id - a.id
+          (a, b) => new Date(b.date.split(' ')[0].split('-').reverse().join('-') + ' ' + b.date.split(' ')[1]) - new Date(a.date.split(' ')[0].split('-').reverse().join('-') + ' ' + a.date.split(' ')[1])
         );
         const filteredNotifications = sortedNotifications.filter(
           (notification) => {
@@ -63,7 +63,7 @@ const NotificationBoxes = ({ isPageDashboard, onNotificationCount }) => {
       }
     };
     getNotifications();
-  }, [isPageDashboard, onNotificationCount, screenSize, teacher, userData.email]);
+  }, [isPageDashboard, onNotificationCount, screenSize, teacher, userData?.email]);
 
   return (
     <div className="notifications-container d-flex flex-column gap-2">

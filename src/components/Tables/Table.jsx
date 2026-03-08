@@ -7,6 +7,7 @@ const Table = ({
   Headers,
   Datas,
   handleUpdateSave,
+  handleDeleteUser,
   handleDelete,
   Container = true,
   Actionbtn = false,
@@ -26,8 +27,10 @@ const Table = ({
   const handleUpdateClose = () => setShowUpdateModal(false);
 
   const handleUpdateSaveClick = async () => {
+    const courseId = selectedCourse._id || selectedCourse.id;
     const updatedCourseData = {
-      id: String(selectedCourse.id),
+      id: courseId,
+      _id: courseId,
       courseName,
       semester,
       instructorName: selectedCourse.instructorName,
@@ -35,9 +38,8 @@ const Table = ({
     };
 
     try {
-      // Güncelleme işlemini yap
       await handleUpdateSave(updatedCourseData);
-      setShowUpdateModal(false); // Modalı kapat
+      setShowUpdateModal(false);
     } catch (error) {
       console.error("Failed to save changes:", error);
     }
@@ -56,10 +58,16 @@ const Table = ({
           </thead>
           <tbody>
             {Actionbtn !== "ManageUsers" &&
-              Datas?.map((item, index) => (
+              Datas?.map((item, index) => {
+                const excludedKeys = ['_id', '__v', 'students'];
+                const visibleKeys = Object.keys(item).filter(key => !excludedKeys.includes(key));
+                return (
                 <tr key={index}>
-                  {Object.values(item).map((data, i) => (
-                    <td key={i}>{data}</td>
+                  {visibleKeys.map((key, i) => (
+                    <td key={i}>
+                      {key === 'semester' ? (item[key] === 'First' ? '1st Semester' : item[key] === 'Second' ? '2nd Semester' : item[key]) : 
+                       Array.isArray(item[key]) ? item[key].length : item[key]}
+                    </td>
                   ))}
                   {Actionbtn === "myCourses" && (
                     <td>
@@ -71,18 +79,19 @@ const Table = ({
                       </button>
                       <button
                         className="bg-danger rounded text-white p-1 mx-1 border-2 border-second"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDelete(item._id || item.id)}
                       >
                         Delete
                       </button>
                     </td>
                   )}
                 </tr>
-              ))}
+              );
+              })}
             {Actionbtn === "ManageUsers" &&
               Datas?.map((item, index) => (
                 <tr key={index}>
-                  <td>{item.id}</td>
+                  <td>{item._id || item.id}</td>
                   <td>{item.name}</td>
                   <td>{item.surname !== "null" ? item.surname : ""}</td>
                   <td>{item.email}</td>
@@ -120,6 +129,14 @@ const Table = ({
                       <option value="student">Student</option>
                     </select>
                   </td>
+                  <td>
+        <button
+          className="btn btn-danger btn-sm"
+          onClick={() => handleDeleteUser(item._id || item.id)}
+        >
+          Delete
+        </button>
+      </td>
                 </tr>
               ))}
           </tbody>

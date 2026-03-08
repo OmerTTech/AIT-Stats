@@ -4,8 +4,6 @@ import { CourseContext } from "../../contexts/CoursesContexs";
 import { AuthContext } from "../../contexts/AuthContext";
 import { Modal, Button } from "react-bootstrap";
 import { API } from "../../services/Api";
-import sign from "jwt-encode";
-import { jwtDecode } from "jwt-decode";
 
 const TeacherCourses = () => {
   const { allCourses, setAllCourses } = useContext(CourseContext);
@@ -27,7 +25,6 @@ const TeacherCourses = () => {
   }, [allCourses, userData]);
 
   const headers = [
-    "id",
     "Course Name",
     "Semester",
     "instructor Name",
@@ -37,7 +34,14 @@ const TeacherCourses = () => {
 
   const handleUpdateSave = async (updatedCourseData) => {
     try {
-      await API.course.updateCourse(updatedCourseData);
+      const courseId = updatedCourseData._id || updatedCourseData.id;
+      await API.course.updateCourse({
+        id: courseId,
+        courseName: updatedCourseData.courseName,
+        semester: updatedCourseData.semester,
+        instructorName: updatedCourseData.instructorName,
+        instructorEmail: updatedCourseData.instructorEmail
+      });
 
       const response = await API.course.courses();
       const updatedCourses = response.data;
@@ -54,46 +58,11 @@ const TeacherCourses = () => {
   const handleDelete = async (courseId) => {
     if (window.confirm("Are you sure you want to delete this course?")) {
       try {
-        await API.course.deleteCourse(courseId);
+        const courseIdToUse = courseId._id || courseId.id || courseId;
+        await API.course.deleteCourse(courseIdToUse);
 
-        // Delete the associated notification
-        const notificationResponse = await API.notification.allNotifications();
-        const notifications = notificationResponse.data;
-
-        // Find the notification associated with the course
-        const notificationToDelete = notifications.find(
-          (notification) =>
-            notification.type === "newCourse" && notification.id === courseId
-        );
-
-        if (notificationToDelete) {
-          await API.notification.deleteNotification(notificationToDelete.id);
-        }
-
-        const response = await API.auth.allUsers();
-        const users = response.data.map((user) => {
-          const decoded = jwtDecode(user.accessToken);
-          return { ...decoded, accessToken: user.accessToken };
-        });
-
-        for (let user of users) {
-          const currentEnrolls = user.enrolls || [];
-          const updatedEnrolls = currentEnrolls.filter(
-            (enrollId) => enrollId !== Number(courseId)
-          );
-
-          const { accessToken, ...updatedUserData } = user;
-          const newUserData = { ...updatedUserData, enrolls: updatedEnrolls };
-
-          const newAccessToken = sign(newUserData, "your-256-bit-secret");
-
-          await API.auth.updateUser(newUserData.id, {
-            accessToken: newAccessToken,
-          });
-        }
-
-        const updatedCoursesResponse = await API.course.courses();
-        const updatedCourses = updatedCoursesResponse.data;
+        const response = await API.course.courses();
+        const updatedCourses = response.data;
         setAllCourses(updatedCourses);
         const myCoursesFiltered = updatedCourses.filter(
           (course) => course?.instructorEmail === userData?.email
@@ -133,28 +102,9 @@ const TeacherCourses = () => {
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
 
-  const formatDate = (date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-
-    return `${day}-${month}-${year} ${hours}:${minutes}`;
-  };
-
   const handleSave = async () => {
     try {
-      const response = await API.course.courses();
-      const existingCourses = response.data;
-      const highestId = existingCourses.reduce((max, course) => {
-        return Math.max(max, Number(course.id));
-      }, 0);
-
-      const newCourseId = String(highestId + 1);
-
       const courseData = {
-        id: newCourseId,
         courseName,
         semester,
         instructorName: userData.name,
@@ -172,25 +122,6 @@ const TeacherCourses = () => {
       setShow(false);
       setCourseName("");
       setSemester("First");
-
-      const notificationResponse = await API.notification.allNotifications();
-      const notifications = notificationResponse.data;
-      const highestNotificationId = notifications.reduce(
-        (max, notification) => {
-          return Math.max(max, Number(notification.id));
-        },
-        0
-      );
-      const newNotificationId = (highestNotificationId + 1).toString();
-
-      const notificationDate = formatDate(new Date());
-      const notification = {
-        id: String(newNotificationId),
-        type: "newCourse",
-        from: courseData.courseName,
-        date: notificationDate,
-      };
-      await API.notification.createNotification(notification);
     } catch (error) {
       console.error("Failed to create course:", error);
     }

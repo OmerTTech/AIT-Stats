@@ -26,16 +26,19 @@ const AuthProvider = ({ children }) => {
       } else if (getUserData.role === "teacher") {
         setTeacher(true);
         setAdmin(false);
+      } else {
+        setAdmin(false);
+        setTeacher(false);
       }
     } else {
       setAdmin(false);
       setTeacher(false);
     }
     setLoading(false);
-  }
+  };
 
   useEffect(() => {
-    getLoginUser()
+    getLoginUser();
   }, [accessToken]);
 
   const logoutHandler = () => {
@@ -44,6 +47,9 @@ const AuthProvider = ({ children }) => {
     localStorage.removeItem("userData");
     sessionStorage.removeItem("userData");
     setAccessToken(null);
+    setUserData({});
+    setAdmin(false);
+    setTeacher(false);
   };
 
   return (

@@ -5,18 +5,18 @@ import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { PiChalkboardTeacher, PiStudent } from "react-icons/pi";
 import { CourseContext } from "../../contexts/CoursesContexs";
 import { API } from "../../services/Api";
-import { jwtDecode } from "jwt-decode";
 
 const Infoboxs = () => {
   const { allCourses } = useContext(CourseContext);
   const [allUsers, setAllUsers] = useState([]);
 
   const getAllUsers = async () => {
-    const response = await API.auth.allUsers();
-    const users = response.data.map((user) => {
-      return jwtDecode(user.accessToken);
-    });
-    setAllUsers(users);
+    try {
+      const response = await API.auth.allUsers();
+      setAllUsers(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    }
   };
   useEffect(() => {
     getAllUsers();

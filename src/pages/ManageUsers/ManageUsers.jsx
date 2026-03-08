@@ -1,8 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import Table from "../../components/Tables/Table";
 import { API } from "../../services/Api";
-import { jwtDecode } from "jwt-decode";
-import sign from "jwt-encode";
 import { AuthContext } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -17,9 +15,15 @@ const ManageUsers = () => {
   const fetchUsers = async () => {
     try {
       const response = await API.auth.allUsers();
-      const users = response.data.map((user) => {
-        return jwtDecode(user.accessToken);
-      });
+      const users = response.data.map((user) => ({
+        id: user._id,
+        name: user.name,
+        surname: user.surname,
+        email: user.email,
+        role: user.role,
+        semester: user.semester,
+        enrollments: user.enrollments
+      }));
       setAllUsers(users);
       setFilteredUsers(users);
     } catch (error) {
@@ -29,38 +33,26 @@ const ManageUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
-  
-  const encodeJWT = (userData) => {
-    const secret = "your-256-bit-secret";
-    return sign(userData, secret);
-  };
 
   const handleUpdateSave = async (updatedUserData) => {
     try {
-      const { accessToken, ...restUserData } = updatedUserData;
-
       const isCurrentUserUpdated = updatedUserData.id === userData.id;
 
-      const newAccessToken = encodeJWT({
-        ...restUserData,
-        role: updatedUserData.role,
-      });
-
       await API.auth.updateUser(updatedUserData.id, {
-        accessToken: newAccessToken,
+        name: updatedUserData.name,
+        surname: updatedUserData.surname,
+        email: updatedUserData.email,
+        role: updatedUserData.role,
+        semester: updatedUserData.semester,
+        enrollments: updatedUserData.enrollments
       });
 
       if (isCurrentUserUpdated) {
-        if (localStorage.getItem("accessToken")) {
-          localStorage.setItem("accessToken", newAccessToken);
-        } else if (sessionStorage.getItem("accessToken")) {
-          sessionStorage.setItem("accessToken", newAccessToken);
-        }
         getLoginUser();
         if (updatedUserData.role === "admin") {
           setAdmin(true);
           setTeacher(true);
-        } else if (updatedUserData.role.role === "teacher") {
+        } else if (updatedUserData.role === "teacher") {
           setTeacher(true);
           setAdmin(false);
         } else {
@@ -70,11 +62,29 @@ const ManageUsers = () => {
         }
       }
 
-      const response = await API.auth.allUsers();
-      setAllUsers(response.data);
       fetchUsers();
     } catch (error) {
       console.error("Failed to update user:", error);
+    }
+  };
+
+  // USER DELETE Function
+  const handleDeleteUser = async (userId) => {
+    if (userId === userData.id) {
+      alert("You can't delete your own account! \nYou need to find another admin first.");
+      return;
+    }
+
+    if (window.confirm("Are you sure? You cannot change this later!!")) {
+      try {
+        await API.auth.deleteUser(userId); 
+        
+        alert("User deleted!");
+        fetchUsers(); 
+      } catch (error) {
+        console.error("Delete failed:", error);
+        alert("Delete failed.");
+      }
     }
   };
 
@@ -100,7 +110,7 @@ const ManageUsers = () => {
   };
 
   
-  const headers = ["ID", "Name", "Surname", "Email", "Semester", "Role"];
+  const headers = ["ID", "Name", "Surname", "Email", "Semester", "Role", "Actions"];
 
   return (
     <>
@@ -128,6 +138,7 @@ const ManageUsers = () => {
           Headers={headers}
           Datas={filteredUsers}
           handleUpdateSave={handleUpdateSave}
+          handleDeleteUser={handleDeleteUser}
           Container={false}
           Actionbtn={"ManageUsers"}
         />

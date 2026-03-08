@@ -3,121 +3,82 @@ import "./Card.css";
 import { API } from "../../services/Api";
 import { AuthContext } from "../../contexts/AuthContext";
 import toast from "react-hot-toast";
-import sign from "jwt-encode";
+import { jwtDecode } from "jwt-decode";
 
 const Card = ({ Course }) => {
   const [addBtn, setBtn] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
-  const { userData, setUserData, setAccessToken } = useContext(AuthContext);
+  const { userData, setAccessToken, setUserData } = useContext(AuthContext);
+
+  const courseId = Course._id || Course.id;
 
   useEffect(() => {
-    if (userData && Course.id) {
-      const getEnrolls = userData.enrolls || [];
-      setEnrolledCourses(getEnrolls);
+    if (userData && courseId) {
+      const getEnrolls = userData.enrollments || userData.enrolls || [];
+      setEnrolledCourses(getEnrolls.map(String));
 
-      if (getEnrolls.includes(+Course.id)) {
+      if (getEnrolls.map(String).includes(String(courseId))) {
         setBtn(true);
       }
     }
-  }, [userData, Course.id]);
+  }, [userData, courseId]);
 
   const btnHandler = async () => {
-    let updatedEnrolls = [...userData.enrolls];
+    const currentEnrolls = enrolledCourses.map(String);
+    const courseIdStr = String(courseId);
+
     if (addBtn) {
-      updatedEnrolls = enrolledCourses.filter((id) => id !== +Course.id);
-      toast.success(`Successfully canceled the \n${Course.courseName} course`);
+      try {
+        const response = await API.course.unenrollCourse({
+          courseId: courseId,
+          studentId: userData.id,
+          studentName: `${userData.name || ''} ${userData.surname || ''}`.trim()
+        });
+        
+        // Update token and userData with new enrollments
+        if (response.data.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+          setAccessToken(response.data.accessToken);
+          const newUserData = jwtDecode(response.data.accessToken);
+          setUserData(newUserData);
+        }
+        
+        const updatedEnrolls = currentEnrolls.filter(id => id !== courseIdStr);
+        setEnrolledCourses(updatedEnrolls);
+        setBtn(false);
+        toast.success(`Successfully canceled the \n${Course.courseName} course`);
+      } catch (error) {
+        console.error("Failed to unenroll:", error);
+        toast.error("Failed to cancel enrollment.");
+      }
     } else {
-      if (enrolledCourses.length < 4) {
-        updatedEnrolls = [...enrolledCourses, Number(+Course.id)].sort(
-          (a, b) => a - b
-        );
-        toast.success(
-          `Successfully registered for the \n${Course.courseName} course`
-        );
-      } else {
+      if (currentEnrolls.length >= 4) {
         toast.error("You can only choose 4 courses");
         return;
       }
-    }
 
-    const encodeJWT = (userData) => {
-      const secret = "your-256-bit-secret";
-      return sign(userData, secret);
-    };
-    const { accessToken, ...updatedUserData } = userData;
-    const newUserData = { ...updatedUserData, enrolls: updatedEnrolls };
-    const newAccessToken = encodeJWT(newUserData);
-
-    try {
-      await API.auth.updateUser(userData.id, { accessToken: newAccessToken });
-
-      if (localStorage.getItem("accessToken")) {
-        localStorage.setItem("accessToken", newAccessToken);
-      } else if (sessionStorage.getItem("accessToken")) {
-        sessionStorage.setItem("accessToken", newAccessToken);
-      }
-
-      setAccessToken(newAccessToken);
-      setUserData(newUserData);
-      setEnrolledCourses(updatedEnrolls);
-      setBtn(!addBtn);
-    } catch (error) {
-      console.error("Failed to update user:", error);
-      toast.error("Failed to update the server.");
-    }
-
-    let notificationId;
-
-    if (addBtn) {
       try {
-        const response = await API.notification.allNotifications();
-        const notifications = response.data;
-        const notificationToDelete = notifications.find(
-          (notification) =>
-            notification.type === "enrollment" &&
-            notification.from === Course.courseName &&
-            notification.student === `${userData.name} ${userData.surname}`
-        );
-        if (notificationToDelete) {
-          notificationId = notificationToDelete.id;
-          await API.notification.deleteNotification(notificationId);
+        const response = await API.course.enrollCourse({
+          courseId: courseId,
+          studentId: userData.id,
+          studentName: `${userData.name || ''} ${userData.surname || ''}`.trim()
+        });
+        
+        // Update token and userData with new enrollments
+        if (response.data.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+          setAccessToken(response.data.accessToken);
+          const newUserData = jwtDecode(response.data.accessToken);
+          setUserData(newUserData);
         }
+        
+        const updatedEnrolls = [...currentEnrolls, courseIdStr];
+        setEnrolledCourses(updatedEnrolls);
+        setBtn(true);
+        toast.success(`Successfully registered for the \n${Course.courseName} course`);
       } catch (error) {
-        console.error("Failed to delete notification:", error);
-      }
-    } else {
-      try {
-        const response = await API.notification.allNotifications();
-        const notifications = response.data;
-
-        const highestId = notifications.reduce((max, notification) => {
-          return Math.max(max, Number(notification.id));
-        }, 0);
-
-        const formatDate = (date) => {
-          const day = String(date.getDate()).padStart(2, "0");
-          const month = String(date.getMonth() + 1).padStart(2, "0");
-          const year = date.getFullYear();
-          const hours = String(date.getHours()).padStart(2, "0");
-          const minutes = String(date.getMinutes()).padStart(2, "0");
-      
-          return `${day}-${month}-${year} ${hours}:${minutes}`;
-        };
-      
-
-        const notification = {
-          id: (highestId + 1).toString(),
-          type: "enrollment",
-          student: `${userData.name&&userData.name} ${userData.surname&&userData.surname}`,
-          from: Course.courseName,
-          recipient: Course.instructorEmail,
-          date: formatDate(new Date()),
-        };
-
-        await API.notification.createNotification(notification);
-      } catch (error) {
-        console.error("Failed to create Notification:", error);
-        toast.error("Failed to create Notification");
+        console.error("Failed to enroll:", error);
+        toast.error("Failed to register for course.");
       }
     }
   };

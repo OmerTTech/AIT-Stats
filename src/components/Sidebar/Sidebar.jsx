@@ -15,7 +15,6 @@ import { FaRegUser } from "react-icons/fa";
 import {
   LuLogOut,
   LuClipboardList,
-  LuClipboardSignature,
 } from "react-icons/lu";
 import { NavLink } from "react-router-dom";
 import { NavContext } from "../../contexts/NavContext";
@@ -86,11 +85,7 @@ const Sidebar = () => {
           )} */}
           {/* ONLY Students and Admin. */}
           <NavLink end to="/exams" className="nav-option">
-            {!admin ? (
-              <LuClipboardSignature className="icon" />
-            ) : (
-              <LuClipboardList className="icon" />
-            )}
+            <LuClipboardList className="icon" />
             <h4 className="h4-nav">Exams Results</h4>
           </NavLink>
           {/* {admin && (

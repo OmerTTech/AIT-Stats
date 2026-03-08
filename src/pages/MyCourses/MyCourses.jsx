@@ -7,7 +7,6 @@ import { AuthContext } from "../../contexts/AuthContext";
 
 const MyCourses = () => {
   const headers = [
-    "id",
     "Course Name",
     "Semester",
     "instructor Name",
@@ -20,11 +19,12 @@ const MyCourses = () => {
   useEffect(() => {
     const fetchEnrollments = async () => {
       try {
-        if (userData) {
-          const enrolls = userData.enrolls.slice(0, 4);
+        if (userData && allCourses.length > 0) {
+          const enrolls = (userData.enrollments || userData.enrolls || []).slice(0, 4);
 
           const filteredCourses = allCourses.filter((course) => {
-            return enrolls.includes(Number(course.id));
+            const courseId = String(course._id || course.id);
+            return enrolls.map(String).includes(courseId);
           });
 
           setMyCourses(filteredCourses);

@@ -3,12 +3,12 @@ import "../Auth.css";
 import { FiAtSign } from "react-icons/fi";
 import { IoLockClosedOutline } from "react-icons/io5";
 import { FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../contexts/AuthContext";
 import toast from "react-hot-toast";
 import { API } from "../../../services/Api";
-import { jwtDecode } from "jwt-decode";
 import { Modal, Button } from "react-bootstrap";
+import { jwtDecode } from "jwt-decode";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -86,33 +86,30 @@ const LoginPage = () => {
     }
 
     try {
-      const response = await API.auth.allUsers();
-      const users = response.data.map((user) => {
-        const decoded = jwtDecode(user.accessToken);
-        return { ...decoded, accessToken: user.accessToken };
+      const response = await API.auth.login({
+        email: inputValues.email,
+        password: inputValues.password
       });
-      const user = users.find((user) => user.email === inputValues.email);
-
-      if (!user) {
-        toast.error("Account not found!");
-        setEmailBorder("red");
-        return;
-      }
-
-      if (user.password === inputValues.password) {
-        const token = user.accessToken;
-        if (rememberMe) {
-          localStorage.setItem("accessToken", token);
-        } else {
-          sessionStorage.setItem("accessToken", token);
-        }
-        setAccessToken(token);
+      
+      const token = response.data.accessToken;
+      const userData = jwtDecode(token);
+      
+      if (rememberMe) {
+        localStorage.setItem("accessToken", token);
       } else {
-        toast.error("Password is incorrected!");
-        setPasswordBorder("red");
+        sessionStorage.setItem("accessToken", token);
       }
+      setAccessToken(token);
+      toast.success("Login successful!");
+      window.location.reload();
     } catch (error) {
       console.error("Login error", error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Login failed. Please try again.");
+      }
+      setPasswordBorder("red");
     }
   };
 

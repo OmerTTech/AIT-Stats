@@ -35,7 +35,7 @@ const Courses = () => {
       <Semestr />
       <div className="d-flex justify-content-center align-items-center row gy-4">
         {coursesBySemester?.map((course) => (
-          <div key={course.id} className="col-xl-3 col-md-4 col-sm-12">
+          <div key={course._id || course.id} className="col-xl-3 col-md-4 col-sm-12">
             <Card Course={course} />
           </div>
         ))}
