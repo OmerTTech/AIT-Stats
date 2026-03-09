@@ -3,12 +3,11 @@ import "../Auth.css";
 import { FiAtSign } from "react-icons/fi";
 import { IoLockClosedOutline } from "react-icons/io5";
 import { FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { AuthContext } from "../../../contexts/AuthContext";
 import toast from "react-hot-toast";
 import { API } from "../../../services/Api";
 import { Modal, Button } from "react-bootstrap";
-import { jwtDecode } from "jwt-decode";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -92,7 +91,6 @@ const LoginPage = () => {
       });
       
       const token = response.data.accessToken;
-      const userData = jwtDecode(token);
       
       if (rememberMe) {
         localStorage.setItem("accessToken", token);

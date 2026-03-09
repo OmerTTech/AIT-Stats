@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useContext } from "react";
+import { createContext, useEffect, useState, useContext, useCallback } from "react";
 import { API } from "../services/Api";
 import { AuthContext } from "./AuthContext";
 
@@ -8,7 +8,7 @@ const CoursesProvider = ({ children }) => {
   const [allCourses, setAllCourses] = useState([]);
   const { accessToken } = useContext(AuthContext);
   
-  const getAllCourses = async () => {
+  const getAllCourses = useCallback(async () => {
     if (!accessToken) return;
     try {
       const { data } = await API.course.courses();
@@ -16,7 +16,7 @@ const CoursesProvider = ({ children }) => {
     } catch (error) {
       console.log(error);
     }
-  };
+  }, [accessToken]);
   
   useEffect(() => {
     if (accessToken) {
